@@ -1,3 +1,6 @@
+import time
+from collections import defaultdict
+
 from scapy.layers.inet import TCP, IP, ICMP
 # ARP
 from scapy.layers.dns import DNS
@@ -30,9 +33,32 @@ def icmp_flood_attack(pkt):
     return pkt.haslayer(ICMP) and pkt[ICMP].type == 8 and pkt[ICMP].code == 0 and pkt[IP].dst == "10.0.0.10"
 
 
-def port_scan_attempt(pkt):
-    """Check if the packet is part of a port scan."""
-    return pkt.haslayer(TCP) and pkt[TCP].flags == "S" and len(pkt[TCP].payload) == 0 and pkt[IP].dst != "10.0.0.1"
+# Store a record of connection attempts
+attempt_records = defaultdict(lambda: defaultdict(int))
+
+
+def port_scan_attempt(pkt, threshold=10, window=60):
+    print(pkt)
+    if not (pkt.haslayer(TCP) and pkt[TCP].flags == "S" and len(pkt[TCP].payload) == 0):
+        return False
+
+    src_ip = pkt[IP].src
+    dst_ip = pkt[IP].dst
+    dst_port = pkt[TCP].dport
+
+    current_time = time.time()
+
+    # Remove outdated connection attempts
+    attempt_records[src_ip] = {k: v for k, v in attempt_records[src_ip].items() if v > current_time - window}
+
+    # Add the current connection attempt to the record
+    attempt_records[src_ip][dst_port] = current_time
+
+    # If the number of connection attempts exceeds the threshold, flag as a port scan
+    if len(attempt_records[src_ip]) > threshold:
+        return True
+
+    return False
 
 
 def malware_communication(pkt):

@@ -20,6 +20,7 @@ def sniff_and_store_wifi_postgres(db, iface, rules):
 
             for rule in rules:
                 if rule["condition"](packet):
+                    print('Condition Matched')
                     db.insert_record("alerts", ("name", "description", "timestamp"),
                                      (rule["name"], f"Packet matched rule: {rule['name']}", timestamp))
 
