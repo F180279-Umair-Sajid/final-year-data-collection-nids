@@ -4,6 +4,11 @@ from scapy.layers.dns import DNS
 from scapy.all import Raw
 
 
+def http_get_request(pkt):
+    """Check if the packet is an HTTP GET request."""
+    return pkt.haslayer(TCP) and pkt[TCP].dport == 80 and pkt.haslayer(Raw) and b"GET" in pkt[Raw].load
+
+
 def sql_injection_attempt(pkt):
     """Check if the packet contains an SQL injection attempt."""
     return pkt.haslayer(TCP) and pkt[TCP].dport == 80 and pkt.haslayer(Raw) and b"SELECT" in pkt[Raw].load
@@ -23,6 +28,11 @@ def dns_zone_transfer_attempt(pkt):
 def icmp_flood_attack(pkt):
     """Check if the packet is part of an ICMP flood attack."""
     return pkt.haslayer(ICMP) and pkt[ICMP].type == 8 and pkt[ICMP].code == 0 and pkt[IP].dst == "10.0.0.10"
+
+
+def port_scan_attempt(pkt):
+    """Check if the packet is part of a port scan."""
+    return pkt.haslayer(TCP) and pkt[TCP].flags == "S" and len(pkt[TCP].payload) == 0 and pkt[IP].dst != "10.0.0.1"
 
 
 def malware_communication(pkt):
@@ -51,26 +61,8 @@ def dns_tunneling_attempt(pkt):
 
 
 def slowloris_attack(pkt):
-    """Check if the packet is part of a Slowloris-like attack."""
-    if not pkt.haslayer(TCP) or not pkt.haslayer(IP) or not pkt.haslayer(Raw):
-        return False
-    tcp = pkt[TCP]
-    ip = pkt[IP]
-    raw = pkt[Raw]
-
-    # Check if the destination port is 80 (HTTP)
-    is_http = tcp.dport == 80
-
-    # Check if the packet has a small payload
-    small_payload = len(raw.load) < 20
-
-    # Check if the packet has the SYN flag set
-    syn_flag = tcp.flags == 'A'
-
-    # Check if the IP identification field is set to 0 (default in Hping3)
-    ip_id_zero = ip.id == 0
-    print('in work')
-    return is_http and small_payload and syn_flag and ip_id_zero
+    """Check if the packet is part of a Slowloris attack."""
+    return pkt.haslayer(TCP) and pkt[TCP].dport == 80 and pkt.haslayer(Raw) and len(pkt[Raw].load) < 20
 
 
 def nmap_port_scan(pkt):
@@ -80,18 +72,16 @@ def nmap_port_scan(pkt):
 
 # List of rules
 rules = [
+    {"name": "HTTP GET request", "condition": http_get_request},
     {"name": "SQL injection attempt", "condition": sql_injection_attempt},
     {"name": "SSH brute force attack", "condition": ssh_brute_force_attack},
     {"name": "DNS zone transfer attempt", "condition": dns_zone_transfer_attempt},
     {"name": "ICMP flood attack", "condition": icmp_flood_attack},
+    {"name": "Port scanning attempt", "condition": port_scan_attempt},
     {"name": "Malware communication attempt", "condition": malware_communication},
     # {"name": "ARP spoofing attempt", "condition": arp_spoofing_attempt},
     {"name": "DNS tunneling attempt", "condition": dns_tunneling_attempt},
     {"name": "Slowloris attack attempt", "condition": slowloris_attack},
     {"name": "Nmap Port scanning attempt", "condition": nmap_port_scan},
-    {
-        "name": "Slowloris-like Attack",
-        "condition": slowloris_attack
-    }
 
 ]
