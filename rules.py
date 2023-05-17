@@ -4,6 +4,17 @@ from scapy.layers.dns import DNS
 from scapy.all import Raw
 
 
+def malware_communication(pkt):
+    if pkt.haslayer(TCP):
+        tcp_layer = pkt[TCP]
+        if hasattr(tcp_layer.payload, "load"):
+            tcp_payload = tcp_layer.payload.load.decode(errors='ignore')
+            return tcp_layer.dport in [6667, 6697] and "PRIVMSG" in tcp_payload
+    return False
+
+
+
+
 def http_get_request(pkt):
     """Check if the packet is an HTTP GET request."""
     return pkt.haslayer(TCP) and pkt[TCP].dport == 80 and pkt.haslayer(Raw) and b"GET" in pkt[Raw].load
@@ -35,9 +46,6 @@ def port_scan_attempt(pkt):
     return pkt.haslayer(TCP) and pkt[TCP].flags == "S" and len(pkt[TCP].payload) == 0 and pkt[IP].dst != "10.0.0.1"
 
 
-def malware_communication(pkt):
-    """Check if the packet is part of a known malware communication."""
-    return pkt.haslayer(TCP) and pkt[TCP].dport in [6667, 6697] and "PRIVMSG" in pkt[TCP].payload.decode()
 
 
 arp_cache = {}

@@ -12,13 +12,14 @@ if __name__ == '__main__':
     password = "12345678"
     host = "127.0.0.1"
     port = "5432"
-    table = "nids"
+    table_nids = "nids"
+    table_alerts = "alerts"
     iface = "Wi-Fi"
     interval = 15
-    database = Database(database, user, password, host, port)
 
-    table_name = "nids"
-    fields = [
+    db = Database(database, user, password, host, port)
+
+    fields_nids = [
         "id SERIAL PRIMARY KEY",
         "flow_id VARCHAR(50)",
         "timestamp TIMESTAMP DEFAULT NOW()",
@@ -37,20 +38,26 @@ if __name__ == '__main__':
         "bwd_pkts_per_avg FLOAT"
     ]
 
+    fields_alerts = [
+        "id SERIAL PRIMARY KEY",
+        "timestamp TIMESTAMP DEFAULT NOW()",
+        "alert_name TEXT NOT NULL",
+        "alert_description TEXT NOT NULL",
+        "src_ip TEXT NOT NULL",
+        "dst_ip TEXT NOT NULL",
+        "src_port INT",
+        "dst_port INT"
+    ]
 
-    database.create_table(table_name, fields)
-    table_name = "alerts"
-    fields = ["id SERIAL PRIMARY KEY", "name TEXT NOT NULL", "description TEXT NOT NULL",
-              "timestamp TIMESTAMP NOT NULL DEFAULT NOW()"]
-    database.create_table(table_name, fields)
+    db.create_table(table_nids, fields_nids)
+    db.create_table(table_alerts, fields_alerts)
 
-    capture_thread = threading.Thread(target=sniff_and_store_wifi_postgres,
-                                      args=(database, iface, rules))
-delete_thread = threading.Thread(target=database.delete_old_records_thread,
-                                 args=(table, interval))
-capture_thread.start()
-delete_thread.start()
+    capture_thread = threading.Thread(target=sniff_and_store_wifi_postgres, args=(db, iface, rules))
+    delete_thread_nids = threading.Thread(target=db.delete_old_records, args=(table_nids, interval))
 
-# Wait for the threads to finish
-capture_thread.join()
-delete_thread.join()
+    capture_thread.start()
+    delete_thread_nids.start()
+
+    # Wait for the threads to finish
+    capture_thread.join()
+    delete_thread_nids.join()
